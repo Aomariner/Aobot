@@ -1,44 +1,71 @@
-<?php 
-require_once('./vendor/autoload.php'); 
-use \LINE\LINEBot\HTTPClient\CurlHTTPClient; 
-use \LINE\LINEBot; 
-use \LINE\LINEBot\MessageBuilder\TextMessageBuilder; 
-$channel_token = 'eYl7FdkSJdfJFLklZ3+spXp9UYinc0UL9gzMeY+ljuyErQBr67nNloi2YjPMFUBRKMq+ECtQ9QXZheV/PwCyzpcjNcPnD4TYboH1hGNsIMyrE7BkgJvqENoicxdSOHAs9Tg36U40VDs85EIPNl9zGQdB04t89/1O/w1cDnyilFU='; 
-$channel_secret = '11c5937f8f7deeddd86bd9f584106a85'; 
-// Get message from Line API 
-$content = file_get_contents('php://input'); 
-$events = json_decode($content, true); 
-if (!is_null($events['events'])) { 
-// Loop through each event 
-foreach ($events['events'] as $event) { 
-// Line API send a lot of event type, we interested in message only. 
-if ($event['type'] == 'message' && $event['message']['type'] == 'text') { 
-// Get replyToken 
-$replyToken = $event['replyToken']; 
-// Split message then keep it in database. 
-$appointments = explode(',', $event['message']['text']); 
-if(count($appointments) == 2) { 
-$host = 'ec2-174-129-223-193.compute-1.amazonaws.com'; 
-$dbname = 'd74bjtc28mea5m'; 
-$user = 'eozuwfnzmgflmu'; 156 
-
-$pass = '2340614a293db8e8a8c02753cd5932cdee45ab90bfcc19d0d306754984cbece1'; 
-$connection = new PDO("pgsql:host=$host;dbname=$dbname", $user, $pass); 
-$params = array( 
-'time' => $appointments[0], 
-'content' => $appointments[1], 
-); 
-$statement = $connection->prepare("INSERT INTO appointments (time, content) VALUES (:time, :content)"); 
-$result = $statement->execute($params); 
-$respMessage = 'Your appointment has saved.'; 
-}else{ 
-$respMessage = 'You can send appointment like this "12.00,House keeping." '; 
-} 
-$httpClient = new CurlHTTPClient($channel_token); 
-$bot = new LINEBot($httpClient, array('channelSecret' => $channel_secret)); 
-$textMessageBuilder = new TextMessageBuilder($respMessage); 
-$response = $bot->replyMessage($replyToken, $textMessageBuilder); 
-} 
-} 
-} 
-echo "OK";
+<?php
+    $accessToken = "eYl7FdkSJdfJFLklZ3+spXp9UYinc0UL9gzMeY+ljuyErQBr67nNloi2YjPMFUBRKMq+ECtQ9QXZheV/PwCyzpcjNcPnD4TYboH1hGNsIMyrE7BkgJvqENoicxdSOHAs9Tg36U40VDs85EIPNl9zGQdB04t89/1O/w1cDnyilFU=";//copy Channel access token ??????????????????
+    
+    $content = file_get_contents('php://input');
+    $arrayJson = json_decode($content, true);
+    
+    $arrayHeader = array();
+    $arrayHeader[] = "Content-Type: application/json";
+    $arrayHeader[] = "Authorization: Bearer {$accessToken}";
+    
+    //???????????????????
+    $message = $arrayJson['events'][0]['message']['text'];
+#???????? Message Type "Text"
+    if($message == "??????"){
+        $arrayPostData['replyToken'] = $arrayJson['events'][0]['replyToken'];
+        $arrayPostData['messages'][0]['type'] = "text";
+        $arrayPostData['messages'][0]['text'] = "???????????";
+        replyMsg($arrayHeader,$arrayPostData);
+    }
+    #???????? Message Type "Sticker"
+    else if($message == "?????"){
+        $arrayPostData['replyToken'] = $arrayJson['events'][0]['replyToken'];
+        $arrayPostData['messages'][0]['type'] = "sticker";
+        $arrayPostData['messages'][0]['packageId'] = "2";
+        $arrayPostData['messages'][0]['stickerId'] = "46";
+        replyMsg($arrayHeader,$arrayPostData);
+    }
+    #???????? Message Type "Image"
+    else if($message == "??????????"){
+        $image_url = "https://i.pinimg.com/originals/cc/22/d1/cc22d10d9096e70fe3dbe3be2630182b.jpg";
+        $arrayPostData['replyToken'] = $arrayJson['events'][0]['replyToken'];
+        $arrayPostData['messages'][0]['type'] = "image";
+        $arrayPostData['messages'][0]['originalContentUrl'] = $image_url;
+        $arrayPostData['messages'][0]['previewImageUrl'] = $image_url;
+        replyMsg($arrayHeader,$arrayPostData);
+    }
+    #???????? Message Type "Location"
+    else if($message == "????????????????"){
+        $arrayPostData['replyToken'] = $arrayJson['events'][0]['replyToken'];
+        $arrayPostData['messages'][0]['type'] = "location";
+        $arrayPostData['messages'][0]['title'] = "???????????";
+        $arrayPostData['messages'][0]['address'] =   "13.7465354,100.532752";
+        $arrayPostData['messages'][0]['latitude'] = "13.7465354";
+        $arrayPostData['messages'][0]['longitude'] = "100.532752";
+        replyMsg($arrayHeader,$arrayPostData);
+    }
+    #???????? Message Type "Text + Sticker ?? 1 ?????"
+    else if($message == "??????"){
+        $arrayPostData['replyToken'] = $arrayJson['events'][0]['replyToken'];
+        $arrayPostData['messages'][0]['type'] = "text";
+        $arrayPostData['messages'][0]['text'] = "?????????????";
+        $arrayPostData['messages'][1]['type'] = "sticker";
+        $arrayPostData['messages'][1]['packageId'] = "1";
+        $arrayPostData['messages'][1]['stickerId'] = "131";
+        replyMsg($arrayHeader,$arrayPostData);
+    }
+function replyMsg($arrayHeader,$arrayPostData){
+        $strUrl = "https://api.line.me/v2/bot/message/reply";
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL,$strUrl);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $arrayHeader);    
+        curl_setopt($ch, CURLOPT_POSTFIELDS,json_encode($arrayPostData));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER,true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        $result = curl_exec($ch);
+        curl_close ($ch);
+    }
+   exit;
+?>
