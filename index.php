@@ -1,76 +1,71 @@
-"use strict";
-
-const functions = require("firebase-functions");
-const {WebhookClient, Payload} = require("dialogflow-fulfillment");
-
-const admin = require("firebase-admin");
-admin.initializeApp(functions.config().firebase);
-
-process.env.DEBUG = "dialogflow:debug";
-
-exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, response) => {
-    const agent = new WebhookClient({ request, response });
-    console.log("Dialogflow Request headers: " + JSON.stringify(request.headers));
-    console.log("Dialogflow Request body: " + JSON.stringify(request.body));
-
-    function welcome(agent) {
-      agent.add(`Welcome to my agent!`);
+<?php
+    $accessToken = "JZoQKFFBh0aIf262g/c3zl3KLA4q+6ZSI0KBGXcUi0UP+e7K7uZBHVe6cWfJhZK2KMq+ECtQ9QXZheV/PwCyzpcjNcPnD4TYboH1hGNsIMzn7gnlb6pg7PneYSmIFvH7EbhM5Fw9qxe35bgyuwKTBQdB04t89/1O/w1cDnyilFU=";//copy Channel access token ตอนที่ตั้งค่ามาใส่
+    
+    $content = file_get_contents('php://input');
+    $arrayJson = json_decode($content, true);
+    
+    $arrayHeader = array();
+    $arrayHeader[] = "Content-Type: application/json";
+    $arrayHeader[] = "Authorization: Bearer {$accessToken}";
+    
+    //รับข้อความจากผู้ใช้
+    $message = $arrayJson['events'][0]['message']['text'];
+#ตัวอย่าง Message Type "Text"
+    if($message == "สวัสดี"){
+        $arrayPostData['replyToken'] = $arrayJson['events'][0]['replyToken'];
+        $arrayPostData['messages'][0]['type'] = "text";
+        $arrayPostData['messages'][0]['text'] = "สวัสดีจ้าาา";
+        replyMsg($arrayHeader,$arrayPostData);
     }
-
-    function fallback(agent) {
-      agent.add(`I didn't understand`);
-      agent.add(`I'm sorry, can you try again?`);
+    #ตัวอย่าง Message Type "Sticker"
+    else if($message == "ฝันดี"){
+        $arrayPostData['replyToken'] = $arrayJson['events'][0]['replyToken'];
+        $arrayPostData['messages'][0]['type'] = "sticker";
+        $arrayPostData['messages'][0]['packageId'] = "2";
+        $arrayPostData['messages'][0]['stickerId'] = "46";
+        replyMsg($arrayHeader,$arrayPostData);
     }
-
-    function bodyMassIndex(agent) {
-      let weight = request.body.queryResult.parameters.weight;
-      let height = request.body.queryResult.parameters.height / 100;
-      let bmi = (weight / (height * height)).toFixed(2);
-
-      let result = "none";
-      let pkgId = "1";
-      let stkId = "1";
-
-      if (bmi < 18.5) {
-        pkgId = "11538";
-        stkId = "51626519";
-        result = "xs";
-      } else if (bmi >= 18.5 && bmi <= 22.9) {
-        pkgId = "11537";
-        stkId = "52002741";
-        result = "s";
-      } else if (bmi >= 23 && bmi <= 24.9) {
-        pkgId = "11537";
-        stkId = "52002745";
-        result = "m";
-      } else if (bmi >= 25 && bmi <= 29.9) {
-        pkgId = "11537";
-        stkId = "52002762";
-        result = "l";
-      } else if (bmi > 30) {
-        pkgId = "11538";
-        stkId = "51626513";
-        result = "xl";
-      }
-      const payloadJson = {
-        type: "sticker",
-        packageId: pkgId,
-        stickerId: stkId
-      };
-
-      let payload = new Payload(`LINE`, payloadJson, { sendAsMessage: true });
-
-      return admin.firestore().collection("bmi").doc(result).get().then(doc => {
-        agent.add(payload);
-        agent.add(doc.data().description);
-      });
+    #ตัวอย่าง Message Type "Image"
+    else if($message == "รูปน้องแมว"){
+        $image_url = "https://i.pinimg.com/originals/cc/22/d1/cc22d10d9096e70fe3dbe3be2630182b.jpg";
+        $arrayPostData['replyToken'] = $arrayJson['events'][0]['replyToken'];
+        $arrayPostData['messages'][0]['type'] = "image";
+        $arrayPostData['messages'][0]['originalContentUrl'] = $image_url;
+        $arrayPostData['messages'][0]['previewImageUrl'] = $image_url;
+        replyMsg($arrayHeader,$arrayPostData);
     }
-
-    let intentMap = new Map();
-    intentMap.set("Default Welcome Intent", welcome);
-    intentMap.set("Default Fallback Intent", fallback);
-    intentMap.set("BMI - custom - yes", bodyMassIndex);
-
-    agent.handleRequest(intentMap);
-  }
-);
+    #ตัวอย่าง Message Type "Location"
+    else if($message == "พิกัดสยามพารากอน"){
+        $arrayPostData['replyToken'] = $arrayJson['events'][0]['replyToken'];
+        $arrayPostData['messages'][0]['type'] = "location";
+        $arrayPostData['messages'][0]['title'] = "สยามพารากอน";
+        $arrayPostData['messages'][0]['address'] =   "13.7465354,100.532752";
+        $arrayPostData['messages'][0]['latitude'] = "13.7465354";
+        $arrayPostData['messages'][0]['longitude'] = "100.532752";
+        replyMsg($arrayHeader,$arrayPostData);
+    }
+    #ตัวอย่าง Message Type "Text + Sticker ใน 1 ครั้ง"
+    else if($message == "ลาก่อน"){
+        $arrayPostData['replyToken'] = $arrayJson['events'][0]['replyToken'];
+        $arrayPostData['messages'][0]['type'] = "text";
+        $arrayPostData['messages'][0]['text'] = "อย่าทิ้งกันไป";
+        $arrayPostData['messages'][1]['type'] = "sticker";
+        $arrayPostData['messages'][1]['packageId'] = "1";
+        $arrayPostData['messages'][1]['stickerId'] = "131";
+        replyMsg($arrayHeader,$arrayPostData);
+    }
+function replyMsg($arrayHeader,$arrayPostData){
+        $strUrl = "https://api.line.me/v2/bot/message/reply";
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL,$strUrl);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $arrayHeader);    
+        curl_setopt($ch, CURLOPT_POSTFIELDS,json_encode($arrayPostData));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER,true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        $result = curl_exec($ch);
+        curl_close ($ch);
+    }
+   exit;
+?>
